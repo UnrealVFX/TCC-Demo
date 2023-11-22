@@ -1,0 +1,169 @@
+// INPUTS:
+// SceneTexture: Not explicity used in code, but necessary for the SceneTextureLookup function from Unreal's Material Compiler (check MaterialCompiler.h in Runtime Module)
+// UV: Texture coordinate of the rendered scene image
+// Radius: the radius of the circle
+// N: the number of sectors that the circle will be divided into (max is 16)
+// ViewSize: the size of the viewport
+
+#define PI 3.1415926538
+
+float3 KuwaharaCircleNSectorsFunc(float4 SceneTexture, float2 UV, float Radius, int N, float2 ViewSize)
+{
+    // These values will store the sum of the color (R, G, B) of the pixels in each sector
+    float3 sum_colors[16] =
+    {
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0)
+    };
+
+    // These values will store the sum of the color squared of the pixels in each sector
+    // We'll use this later to calculate the variance and the standard deviation
+    float3 sum_colors_sqrd[16] =
+    {
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0)
+    };
+
+    // These values will store the mean color of each sector
+    float3 mean_colors[16] =
+    {
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0)
+    };
+
+    // These values will store the variance of each sector
+    float3 variances[16] =
+    {
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0),
+        float3(0, 0, 0)
+    };
+
+    // These values will store the number of pixels in each sector
+    int pixel_numbers[16] =
+    {
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    };
+
+    // Number of pixels in a quadrant
+    // Will calculated dynamically, as this number may change dependin on the chosen radius
+    // float n_pixels = 0;
+
+    // The arc of each sector, in radians
+    float sector_arc = (2 * PI) / N;
+
+    // The final value calculated: the color of this pixel!
+    float3 return_color;
+
+    for(int i = 0; i <= 2* Radius; i++)
+    {
+        for(int j = 0; j <= 2* Radius; j++)
+        {
+            float2 pixel_position = float2(i, j) + float2(-Radius, -Radius);
+            float2 position_uv = UV + pixel_position/ViewSize;
+
+            if(length(UV - position_uv) <= Radius)
+            {
+                float2 pixel_vector = position_uv - UV;
+                float pixel_arc = atan2(-pixel_vector.y, pixel_vector.x) + PI;
+                int sector_index = trunc(pixel_arc / sector_arc);
+
+                float3 color = SceneTextureLookup(position_uv, 14, false);	// samples color from this UV coordinate in Post-Process scene texture (which has id = 14)
+                sum_colors[sector_index] += color;
+                sum_colors_sqrd[sector_index] += color * color;
+                pixel_numbers[sector_index] += 1;
+            }
+        }
+    }
+
+    // Calculates (roughly) how many pixels there are per sector
+    // n_pixels = n_pixels / N;
+
+    float min = 3;	//will store the min value the sum of all RGB channels of variance. Starts off with the max value possible (i.e white = {1, 1, 1})
+
+    for(int i = 0; i < N; i++)
+    {
+        mean_colors[i] = sum_colors[i] / pixel_numbers[i];
+        variances[i] = (sum_colors_sqrd[i] / pixel_numbers[i]) - (mean_colors[i] * mean_colors[i]);
+
+        float variance_channels_sum = variances[i].r + variances[i].g + variances[i].b;
+
+        if(variance_channels_sum < min)
+        {
+            min = variance_channels_sum;
+            return_color = mean_colors[i];
+        }
+    }
+
+    return return_color;
+}

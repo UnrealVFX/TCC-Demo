@@ -1,0 +1,15 @@
+.git
+.vs
+.vscode
+Content
+DerivedDataCache
+Intermediate
+Platforms
+Saved
+Shaders
+Plugins/PostProcessFree/Content
+Plugins/PostProcessFree/Shaders
+Plugins/PPFree/Content
+Plugins/PPFree/Intermediate
+Plugins/TestShaders/Content
+Plugins/TestShaders/Intermediate
