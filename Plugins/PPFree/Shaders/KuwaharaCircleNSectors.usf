@@ -115,10 +115,6 @@ float3 KuwaharaCircleNSectorsFunc(float4 SceneTexture, float2 UV, float Radius, 
         0
     };
 
-    // Number of pixels in a quadrant
-    // Will calculated dynamically, as this number may change dependin on the chosen radius
-    // float n_pixels = 0;
-
     // The arc of each sector, in radians
     float sector_arc = (2 * PI) / N;
 
@@ -145,9 +141,6 @@ float3 KuwaharaCircleNSectorsFunc(float4 SceneTexture, float2 UV, float Radius, 
             }
         }
     }
-
-    // Calculates (roughly) how many pixels there are per sector
-    // n_pixels = n_pixels / N;
 
     float min = 3;	//will store the min value the sum of all RGB channels of variance. Starts off with the max value possible (i.e white = {1, 1, 1})
 
